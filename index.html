@@ -1,171 +1,293 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+< lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Adventure Join V15.3 - Estável</title>
+    <title>Adventure Join V15 - Multiplataforma</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { margin: 0; overflow: hidden; background: #050507; touch-action: none; font-family: sans-serif; width: 100vw; height: 100vh; position: fixed; }
+        body { 
+            margin: 0; overflow: hidden; background: #050507; 
+            touch-action: none; user-select: none; -webkit-user-select: none;
+            width: 100vw; height: 100vh; position: fixed; font-family: 'Segoe UI', sans-serif;
+        }
         canvas { display: block; width: 100%; height: 100%; }
         
-        #overlay { position: absolute; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.9); z-index: 1000; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; text-align: center; }
-        #start-btn { padding: 20px 50px; font-size: 24px; font-weight: bold; color: white; background: #00d4ff; border: none; border-radius: 50px; cursor: pointer; box-shadow: 0 0 20px rgba(0,212,255,0.5); }
-        
+        /* UI de Vida */
         #ui { position: absolute; top: 20px; left: 20px; color: #fff; z-index: 100; pointer-events: none; }
-        .hp-bar { width: 150px; height: 10px; background: #333; border-radius: 5px; margin-top: 5px; overflow: hidden; }
-        #hp-p-bar { height: 100%; width: 100%; background: #44ff88; transition: 0.3s; }
-        #hp-e-bar { height: 100%; width: 100%; background: #ff4444; transition: 0.3s; }
+        .hp-label { font-size: 10px; text-transform: uppercase; letter-spacing: 2px; opacity: 0.7; }
+        .hp-val { font-size: 22px; font-weight: 900; margin-bottom: 5px; }
 
-        .btn { position: absolute; width: 70px; height: 70px; background: rgba(255,255,255,0.1); border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 10px; font-weight: bold; pointer-events: auto; }
-        #joy-bg { position: absolute; bottom: 40px; left: 30px; width: 120px; height: 120px; background: rgba(255,255,255,0.05); border: 2px solid rgba(255,255,255,0.2); border-radius: 50%; pointer-events: auto; }
-        #joy-stick { position: absolute; top: 30px; left: 30px; width: 60px; height: 60px; background: rgba(255,255,255,0.7); border-radius: 50%; pointer-events: none; }
-        #btn-jump { bottom: 130px; right: 30px; }
+        /* Tutorial PC */
+        #pc-tutorial {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.8); color: white; padding: 20px; border-radius: 15px;
+            text-align: center; border: 1px solid #444; z-index: 200;
+            transition: opacity 1s; pointer-events: none;
+        }
+        #pc-tutorial h2 { color: #00d4ff; margin-bottom: 10px; }
+        #pc-tutorial p { font-size: 14px; line-height: 1.6; }
+
+        /* Controles Mobile */
+        #controls-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 90; }
+        .btn { 
+            position: absolute; width: 75px; height: 75px; 
+            background: rgba(255,255,255,0.1); border: 2px solid rgba(255,255,255,0.3); 
+            border-radius: 50%; display: flex; align-items: center; justify-content: center; 
+            color: white; font-size: 11px; font-weight: bold; backdrop-filter: blur(5px);
+        }
+        #joystick-area { position: absolute; bottom: 40px; left: 30px; width: 130px; height: 130px; background: rgba(255,255,255,0.05); border: 2px solid rgba(255,255,255,0.2); border-radius: 50%; }
+        #joystick-stick { position: absolute; top: 35px; left: 35px; width: 60px; height: 60px; background: rgba(255,255,255,0.7); border-radius: 50%; }
         #btn-roll { bottom: 40px; right: 30px; border-color: orange; }
-        #btn-atk1 { bottom: 130px; right: 120px; border-color: #00d4ff; display: none; }
+        #btn-jump { bottom: 135px; right: 30px; }
+        #btn-sprint { bottom: 40px; right: 125px; border-color: #ff6600; }
+        #btn-atk-light { bottom: 130px; right: 125px; border-color: #00d4ff; display: none; background: rgba(0,212,255,0.1); }
+        #btn-atk-heavy { bottom: 215px; right: 100px; border-color: #ff3333; display: none; background: rgba(255,51,51,0.1); }
+        .active-btn { background: rgba(255,255,255,0.4) !important; transform: scale(1.1); }
+
+        #stamina-container { position: absolute; bottom: 210px; left: 30px; width: 130px; height: 8px; background: rgba(0,0,0,0.5); border-radius: 4px; overflow: hidden; }
+        #stamina-bar { height: 100%; width: 100%; background: #00ffcc; }
     </style>
 </head>
 <body>
 
-<div id="overlay">
-    <h1>ADVENTURE JOIN</h1>
-    <p style="margin-bottom: 20px; color: #aaa;">PC: WASD + K | Mobile: Touch</p>
-    <button id="start-btn">JOGAR AGORA</button>
-</div>
-
 <div id="ui">
-    <div>HERÓI <div class="hp-bar"><div id="hp-p-bar"></div></div></div>
-    <div style="margin-top: 15px;">INIMIGO <div class="hp-bar"><div id="hp-e-bar"></div></div></div>
+    <div class="hp-label">Herói</div><div class="hp-val" id="hp-p" style="color: #44ff88;">100</div>
+    <div class="hp-label">Inimigo</div><div class="hp-val" id="hp-e" style="color: #ff4444;">50</div>
 </div>
 
-<div id="joy-bg"><div id="joy-stick"></div></div>
-<div id="btn-jump" class="btn">PULO</div>
-<div id="btn-roll" class="btn">ROLL</div>
-<div id="btn-atk1" class="btn">ATAQUE</div>
+<div id="pc-tutorial" id="tutorial">
+    <h2>COMANDOS PC</h2>
+    <p><b>WASD / Setas:</b> Mover<br>
+       <b>Espaço:</b> Pular | <b>Shift:</b> Correr<br>
+       <b>K / Mouse Esq:</b> Leve | <b>L / Mouse Dir:</b> Pesado<br>
+       <b>J:</b> Esquiva (Roll)</p>
+</div>
 
-<canvas id="game"></canvas>
+<div id="stamina-container"><div id="stamina-bar"></div></div>
+
+<div id="controls-layer">
+    <div id="joystick-area"><div id="joystick-stick"></div></div>
+    <div id="btn-roll" class="btn">ROLL</div>
+    <div id="btn-jump" class="btn">PULO</div>
+    <div id="btn-sprint" class="btn">CORRER</div>
+    <div id="btn-atk-light" class="btn">LEVE</div>
+    <div id="btn-atk-heavy" class="btn">PESADO</div>
+</div>
+
+<canvas id="gameCanvas"></canvas>
 
 <script>
-const canvas = document.getElementById('game');
+const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
-let running = false;
+const tutorial = document.getElementById('pc-tutorial');
 
-document.getElementById('start-btn').onclick = () => {
-    document.getElementById('overlay').style.display = 'none';
-    running = true;
-};
+// Esconder tutorial após 6 segundos
+setTimeout(() => { tutorial.style.opacity = '0'; }, 6000);
 
-let p = { x:0, z:0, y:0, vY:0, ang:0, spd:5, hp:100, sword:false, atk:false };
-let e = { x:-200, z:200, hp:50, spd:1.8, flash:0 };
-let chest = { x:150, z:150, open:false };
+// --- ESTADOS ---
+let player = { x:0, z:0, y:0, velY:0, angle:0, speed:4.5, sprintSpeed:8, hasSword:false, isAttacking:false, hp:100, kbX:0, kbZ:0, knockback:0, flash:0 };
+let enemy = { x:-400, z:400, hp:50, speed:2, attackCooldown:0, flash:0, knockback:0, kbX:0, kbZ:0 };
+let chest = { x:200, z:200, open:false };
 let keys = {};
-let joy = { id: null, dx: 0, dy: 0 };
+let joyData = { id: null, x: 0, y: 0 };
+let stamina = 100, lastTime = Date.now(), freezeFrames = 0;
+let camera = { x: 0, y: 0, zoom: 0.75 };
 
-window.onresize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
-window.onresize();
+function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+window.addEventListener('resize', resize); resize();
 
-window.onkeydown = (ev) => keys[ev.code] = true;
-window.onkeyup = (ev) => keys[ev.code] = false;
-
-// Touch Handlers
-canvas.addEventListener('touchstart', (ev) => {
-    for(let t of ev.touches) {
-        const j = document.getElementById('joy-bg').getBoundingClientRect();
-        if(Math.hypot(t.clientX-(j.left+60), t.clientY-(j.top+60)) < 80) joy.id = t.identifier;
-        
-        const bJ = document.getElementById('btn-jump').getBoundingClientRect();
-        if(t.clientX > bJ.left && t.clientX < bJ.right && t.clientY > bJ.top && t.clientY < bJ.bottom && p.y === 0) p.vY = 12;
-        
-        const bA = document.getElementById('btn-atk1').getBoundingClientRect();
-        if(t.clientX > bA.left && t.clientX < bA.right && t.clientY > bA.top && t.clientY < bA.bottom) doAtk();
-    }
+// ==================== COMANDOS TECLADO & MOUSE ====================
+window.addEventListener('keydown', e => { 
+    keys[e.code] = true; 
+    // Teclas de ação única
+    if(e.code === 'Space' && player.y === 0) player.velY = 13;
+    if(e.code === 'KeyJ') doRoll();
+    if(e.code === 'KeyK') iniciarAtaque('light', 6, 110, 1.5, 8);
+    if(e.code === 'KeyL') iniciarAtaque('heavy', 15, 130, 1.1, 14);
 });
+window.addEventListener('keyup', e => keys[e.code] = false);
 
-canvas.addEventListener('touchmove', (ev) => {
-    for(let t of ev.touches) {
-        if(t.identifier === joy.id) {
-            const j = document.getElementById('joy-bg').getBoundingClientRect();
-            joy.dx = Math.max(-40, Math.min(40, t.clientX-(j.left+60)));
-            joy.dy = Math.max(-40, Math.min(40, t.clientY-(j.top+60)));
-            document.getElementById('joy-stick').style.transform = `translate(${joy.dx}px,${joy.dy}px)`;
+window.addEventListener('mousedown', e => {
+    if(e.button === 0) iniciarAtaque('light', 6, 110, 1.5, 8);
+    if(e.button === 2) iniciarAtaque('heavy', 15, 130, 1.1, 14);
+});
+window.addEventListener('contextmenu', e => e.preventDefault()); // Desativa menu do botão direito
+
+// ==================== COMANDOS TOUCH (MOBILE) ====================
+const btns = { roll: document.getElementById('btn-roll'), jump: document.getElementById('btn-jump'), sprint: document.getElementById('btn-sprint'), light: document.getElementById('btn-atk-light'), heavy: document.getElementById('btn-atk-heavy') };
+
+function updateInputs(e) {
+    e.preventDefault();
+    const touches = e.touches;
+    Object.values(btns).forEach(b => b.classList.remove('active-btn'));
+
+    for (let t of touches) {
+        const x = t.clientX, y = t.clientY;
+        const jRect = document.getElementById('joystick-area').getBoundingClientRect();
+        const distToJoy = Math.hypot(x - (jRect.left + 65), y - (jRect.top + 65));
+
+        if (distToJoy < 75 || joyData.id === t.identifier) {
+            joyData.id = t.identifier;
+            joyData.x = Math.max(-50, Math.min(50, x - (jRect.left + 65)));
+            joyData.y = Math.max(-50, Math.min(50, y - (jRect.top + 65)));
+            document.getElementById('joystick-stick').style.transform = `translate(${joyData.x}px, ${joyData.y}px)`;
+            continue; 
         }
+
+        Object.keys(btns).forEach(key => {
+            const b = btns[key]; if (b.style.display === 'none') return;
+            const r = b.getBoundingClientRect();
+            if (x > r.left - 10 && x < r.right + 10 && y > r.top - 10 && y < r.bottom + 10) {
+                b.classList.add('active-btn');
+                if (e.type === 'touchstart') {
+                    if (key === 'jump' && player.y === 0) player.velY = 13;
+                    if (key === 'roll') doRoll();
+                    if (key === 'light') iniciarAtaque('light', 6, 110, 1.5, 8);
+                    if (key === 'heavy') iniciarAtaque('heavy', 15, 130, 1.1, 14);
+                }
+            }
+        });
     }
-});
+}
 
-window.addEventListener('touchend', (ev) => {
-    let active = false;
-    for(let t of ev.touches) if(t.identifier === joy.id) active = true;
-    if(!active) { joy.id = null; joy.dx = 0; joy.dy = 0; document.getElementById('joy-stick').style.transform = 'translate(0,0)'; }
-});
+window.addEventListener('touchstart', updateInputs, { passive: false });
+window.addEventListener('touchmove', updateInputs, { passive: false });
+window.addEventListener('touchend', (e) => {
+    let active = false; for(let t of e.touches) if(t.identifier === joyData.id) active = true;
+    if(!active) { joyData.id = null; joyData.x = 0; joyData.y = 0; document.getElementById('joystick-stick').style.transform = 'translate(0,0)'; }
+    updateInputs(e);
+}, { passive: false });
 
-function doAtk() {
-    if(!p.sword || p.atk) return;
-    p.atk = true;
+// ==================== LÓGICA CORE ====================
+function doRoll() {
+    if (stamina >= 25) { 
+        stamina -= 25; 
+        player.kbX = Math.cos(player.angle)*22; player.kbZ = Math.sin(player.angle)*22; 
+        player.knockback = 10; 
+    }
+}
+
+function iniciarAtaque(tipo, dano, alcance, tolerância, impulso) {
+    if (!player.hasSword || player.isAttacking) return;
+    player.isAttacking = true; player.atkType = tipo;
+    player.kbX = Math.cos(player.angle) * impulso; player.kbZ = Math.sin(player.angle) * impulso;
+    player.knockback = 6;
     setTimeout(() => {
-        if(Math.hypot(e.x-p.x, e.z-p.z) < 100) { e.hp -= 10; e.flash = 5; }
-        p.atk = false;
-    }, 150);
+        const dx = enemy.x - player.x, dz = enemy.z - player.z;
+        if (enemy.hp > 0 && Math.hypot(dx, dz) < alcance) {
+            const ang = Math.atan2(dz, dx);
+            let diff = Math.abs(ang - player.angle);
+            while(diff > Math.PI) diff -= Math.PI*2;
+            if (Math.abs(diff) < tolerância) {
+                enemy.hp -= dano; enemy.flash = 6; freezeFrames = 3;
+                enemy.kbX = Math.cos(ang)*25; enemy.kbZ = Math.sin(ang)*25; enemy.knockback = 10;
+            }
+        }
+        player.isAttacking = false;
+    }, tipo === 'light' ? 100 : 250);
 }
 
 function update() {
-    if(running) {
-        let mx = 0, mz = 0;
-        if(keys['KeyW']) mz -= 1; if(keys['KeyS']) mz += 1;
-        if(keys['KeyA']) mx -= 1; if(keys['KeyD']) mx += 1;
+    if (freezeFrames > 0) { freezeFrames--; requestAnimationFrame(update); return; }
+    const dt = (Date.now() - lastTime) / 1000; lastTime = Date.now();
 
-        if(Math.hypot(mx, mz) > 0) { p.ang = Math.atan2(mz, mx); p.x += Math.cos(p.ang)*p.spd; p.z += Math.sin(p.ang)*p.spd; }
-        else if(Math.hypot(joy.dx, joy.dy) > 5) { p.ang = Math.atan2(joy.dy, joy.dx) + Math.PI/4; p.x += Math.cos(p.ang)*p.spd; p.z += Math.sin(p.ang)*p.spd; }
+    // Movimento Combinado (Teclado + Touch)
+    let mx = 0, mz = 0;
+    if (keys['KeyW'] || keys['ArrowUp']) mz -= 1;
+    if (keys['KeyS'] || keys['ArrowDown']) mz += 1;
+    if (keys['KeyA'] || keys['ArrowLeft']) mx -= 1;
+    if (keys['KeyD'] || keys['ArrowRight']) mx += 1;
 
-        p.y += p.vY; p.vY -= 0.8; if(p.y < 0) { p.y = 0; p.vY = 0; }
-        if(keys['KeyK']) doAtk();
-
-        if(e.hp > 0) {
-            let dist = Math.hypot(p.x-e.x, p.z-e.z);
-            if(dist < 300 && dist > 40) {
-                let angE = Math.atan2(p.z-e.z, p.x-e.x);
-                e.x += Math.cos(angE)*e.spd; e.z += Math.sin(angE)*e.spd;
-            }
-        }
-
-        if(!chest.open && Math.hypot(p.x-chest.x, p.z-chest.z) < 50) {
-            chest.open = true; p.sword = true;
-            document.getElementById('btn-atk1').style.display = 'flex';
-        }
-
-        document.getElementById('hp-p-bar').style.width = p.hp + "%";
-        document.getElementById('hp-e-bar').style.width = (e.hp*2) + "%";
+    let isMoving = false;
+    if (Math.hypot(mx, mz) > 0) { // Teclado
+        player.angle = Math.atan2(mz, mx);
+        isMoving = true;
+    } else if (Math.hypot(joyData.x, joyData.y) > 5) { // Mobile
+        player.angle = Math.atan2(joyData.y, joyData.x) + Math.PI/4;
+        isMoving = true;
     }
-    draw();
-    requestAnimationFrame(update);
+
+    const sprinting = keys['ShiftLeft'] || btns.sprint.classList.contains('active-btn');
+
+    if (isMoving && (player.knockback <= 0 || player.isAttacking)) {
+        const s = (sprinting && stamina > 5) ? player.sprintSpeed : player.speed;
+        const m = player.isAttacking ? 0.3 : 1;
+        player.x += Math.cos(player.angle) * s * m;
+        player.z += Math.sin(player.angle) * s * m;
+    }
+
+    // Física e Stamina
+    player.y += player.velY; player.velY -= 0.8; if (player.y < 0) { player.y = 0; player.velY = 0; }
+    if (player.knockback > 0) { player.x += player.kbX; player.z += player.kbZ; player.kbX *= 0.88; player.kbZ *= 0.88; player.knockback--; }
+    stamina = Math.min(100, (sprinting && isMoving) ? stamina - 35*dt : stamina + 20*dt);
+    document.getElementById('stamina-bar').style.width = stamina + "%";
+
+    // IA Inimigo
+    if (enemy.hp > 0) {
+        const d = Math.hypot(player.x - enemy.x, player.z - enemy.z);
+        if (enemy.knockback > 0) { enemy.x += enemy.kbX; enemy.z += enemy.kbZ; enemy.kbX *= 0.85; enemy.kbZ *= 0.85; enemy.knockback--; }
+        else if (d < 45 && enemy.attackCooldown <= 0) {
+            player.hp -= 10; player.flash = 6; player.knockback = 10;
+            const a = Math.atan2(player.z-enemy.z, player.x-enemy.x);
+            player.kbX = Math.cos(a)*25; player.kbZ = Math.sin(a)*25; enemy.attackCooldown = 1.5;
+        } else if (d < 400) {
+            const a = Math.atan2(player.z-enemy.z, player.x-enemy.x);
+            enemy.x += Math.cos(a)*enemy.speed; enemy.z += Math.sin(a)*enemy.speed;
+        }
+        enemy.attackCooldown -= dt;
+    }
+
+    // Baú
+    if(!chest.open && Math.hypot(player.x-chest.x, player.z-chest.z) < 45) {
+        chest.open = true; player.hasSword = true;
+        btns.light.style.display = 'flex'; btns.heavy.style.display = 'flex';
+    }
+
+    document.getElementById('hp-p').innerText = Math.ceil(player.hp);
+    document.getElementById('hp-e').innerText = Math.max(0, Math.ceil(enemy.hp));
+    camera.x += ((player.x-player.z) - camera.x) * 0.1;
+    camera.y += (((player.x+player.z)/2) - camera.y) * 0.1;
+
+    draw(); requestAnimationFrame(update);
 }
 
 function draw() {
     ctx.fillStyle = '#0a0a0c'; ctx.fillRect(0,0,canvas.width,canvas.height);
-    ctx.save();
-    ctx.translate(canvas.width/2, canvas.height/2);
-    ctx.scale(0.8, 0.8);
+    ctx.save(); ctx.translate(canvas.width/2 - camera.x*camera.zoom, canvas.height/2 - camera.y*camera.zoom); ctx.scale(camera.zoom, camera.zoom);
 
-    const toIso = (x, z) => ({ x: x - z, y: (x + z) / 2 });
-
-    // Cenário (Baú)
-    if(!chest.open) {
-        let pos = toIso(chest.x - p.x, chest.z - p.z);
-        ctx.fillStyle = '#f1c40f'; ctx.fillRect(pos.x-20, pos.y-20, 40, 30);
+    // Chão
+    ctx.strokeStyle = '#1a1a20'; ctx.lineWidth = 2;
+    for(let i=-10; i<=10; i++) {
+        let a = i*150;
+        ctx.beginPath(); ctx.moveTo(a-1500, (a+1500)/2); ctx.lineTo(a+1500, (a-1500)/2); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(-1500+a, (-1500-a)/2); ctx.lineTo(1500+a, (1500-a)/2); ctx.stroke();
     }
 
-    // Inimigo
-    if(e.hp > 0) {
-        let pos = toIso(e.x - p.x, e.z - p.z);
-        ctx.fillStyle = e.flash > 0 ? '#fff' : '#e74c3c';
-        ctx.fillRect(pos.x-20, pos.y-50, 40, 60);
-        if(e.flash > 0) e.flash--;
-    }
+    const ents = [{x:player.x, z:player.z, t:'p', f:player.flash}];
+    if (enemy.hp > 0) ents.push({x:enemy.x, z:enemy.z, t:'e', f:enemy.flash});
+    if (!chest.open) ents.push({x:chest.x, z:chest.z, t:'c', f:0});
+    
+    ents.sort((a,b) => (a.x+a.z) - (b.x+b.z)).forEach(e => {
+        const iso = {x: e.x-e.z, y: (e.x+e.z)/2};
+        ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.ellipse(iso.x, iso.y, 25, 12, 0, 0, Math.PI*2); ctx.fill();
 
-    // Jogador (Sempre no centro)
-    ctx.fillStyle = '#3498db';
-    ctx.fillRect(-15, -40 - p.y, 30, 50);
-    if(p.atk) { ctx.strokeStyle = '#00d4ff'; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(0, -20, 60, 0, Math.PI*2); ctx.stroke(); }
-
+        if(e.t === 'p') {
+            ctx.fillStyle = e.f > 0 ? '#fff' : '#3498db'; 
+            ctx.fillRect(iso.x-15, iso.y-50-player.y, 30, 50);
+            if(player.flash > 0) player.flash--;
+            if(player.isAttacking) {
+                ctx.strokeStyle = player.atkType==='light'?'#00d4ff':'#ff3333'; ctx.lineWidth=10;
+                ctx.beginPath(); ctx.arc(iso.x, iso.y-25, 65, player.angle-1.2, player.angle+1.2); ctx.stroke();
+            }
+        } else if(e.t === 'e') {
+            ctx.fillStyle = e.f > 0 ? '#fff' : '#e74c3c'; 
+            ctx.fillRect(iso.x-20, iso.y-60, 40, 60);
+            if(enemy.flash > 0) enemy.flash--;
+        } else {
+            ctx.fillStyle = '#f1c40f'; ctx.fillRect(iso.x-20, iso.y-25, 40, 30);
+        }
+    });
     ctx.restore();
 }
 update();
